@@ -1,8 +1,18 @@
 {
-  "checkedAt": "2026-10-20T08:32:17.965Z",
+  "checkedAt": "2026-10-20T08:37:45.877Z",
   "url": "https://www.avito.ru/all?cd=1&q=%D0%BD%D0%BE%D0%B6+%D1%81%D1%81%D1%81%D1%80&s=104",
   "count": 50,
   "items": [
+    {
+      "id": "8419857420",
+      "title": "Нож складной Белка СССР",
+      "price": "1 510 ₽",
+      "location": "Чувашская Республика — Чувашия, Чебоксары",
+      "published": "1 час назад",
+      "url": "https://www.avito.ru/cheboksary/ohota_i_rybalka/nozh_skladnoy_belka_sssr_8419857420",
+      "image": "https://10.img.avito.st/image/1/1.pA_3mraACOaBP8ris4yLTPQ6CuJFLQzmRUpp4kX5DCRHOQz8gT_K4kE.q-XF-FasbXTS3JD3XwmSNcyY1ceasKrPF9R8eLfp0e4?cqp=2.2LhnDdKx1gU5sZ7QAbwhSdJoeYt5K_KL9JwGcCXpGrDVbBxJ1yJf9Jn7hY3rGWaiHtSha9zz1w==",
+      "description": "Чувашская Республика — Чувашия, Чебоксары"
+    },
     {
       "id": "8347426940",
       "title": "Дорожный нож, СССР",
@@ -70,7 +80,7 @@
       "location": "Москва",
       "published": "1 час назад",
       "url": "https://www.avito.ru/moskva/posuda_i_tovary_dlya_kuhni/vilki_desertnye_sssr_8431727152",
-      "image": "https://b20.img.avito.st/image/1/1.Brns6baAqlCaTGhU7JUzuOxIqFReXq5QXjnLVF6KrpJcSq5KmkxoVFo.mhuSqfP0kMD-OCaE0ptf-iArgeO-_GeXb4DHoOHEsdk?cqp=2.2LhnDdKx1gU5sZ7QAbwhSdJoeYt5K_KL9JwGcCXpGrDVbBxJ1yJf9Jn7hY3rGWaiHtSha9zz1w==",
+      "image": "",
       "description": "Десертные (предположительно, т. К имеют короткие зубчики)вилки и нож. 110 руб одна штука."
     },
     {
@@ -121,7 +131,7 @@
       "published": "1 час назад",
       "url": "https://www.avito.ru/chelyabinsk/remont_i_stroitelstvo/strogo_naturalnyy_gibkiy_mramor_dlya_sten_8346857783",
       "image": "",
-      "description": "Только у нaссpoго ИЗ Натуpальhого Мраmоpa. Гибкий мpaмop Hаzdесоr –это прeмиaльный современный инновационный матеpиал на оснoвe натурaльногo мeлко фpакциoнногo мрaмopа закрeплённoго нa гибкoм ocновaнии с помощью акpиловыx cвязующих. Пишитe, звoнитe..."
+      "description": "Только у нaсстpoго ИЗ Натуpальhого Мраmоpa. Гибкий мpaмop Hаzdесоr –это прeмиaльный современный инновационный матеpиал на оснoвe натурaльногo мeлко фpакциoнногo мрaмopа закрeплённoго нa гибкoм ocновaнии с помощью акpиловыx cвязующих. Пишитe, звoнит..."
     },
     {
       "id": "8347844176",
@@ -208,7 +218,7 @@
       "title": "Нож складной СССР",
       "price": "1 000 ₽",
       "location": "Саратовская обл., Энгельсский р-н, муниципальное образование Энгельс, Энгельс",
-      "published": "1 час назад",
+      "published": "2 часа назад",
       "url": "https://www.avito.ru/engels/kollektsionirovanie/nozh_skladnoy_sssr_8557723142",
       "image": "",
       "description": "Саратовская обл., Энгельсский р-н, муниципальное образование Энгельс, Энгельс"
@@ -492,16 +502,6 @@
       "url": "https://www.avito.ru/yalta/ohota_i_rybalka/nozh_nozhik._skladnoy_sssr_pavlovo_zhar-ptitsa_8557075664",
       "image": "",
       "description": "Республика Крым, Ялта"
-    },
-    {
-      "id": "8459156876",
-      "title": "Ножи столовые в упаковке СССР",
-      "price": "1 900 ₽",
-      "location": "Ивановская обл., Иваново",
-      "published": "Вчера",
-      "url": "https://www.avito.ru/ivanovo/posuda_i_tovary_dlya_kuhni/nozhi_stolovye_v_upakovke_sssr_8459156876",
-      "image": "",
-      "description": "Раритет сама коробка, остались столовые ножи."
     }
   ]
 }
