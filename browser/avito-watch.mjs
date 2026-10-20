@@ -11,6 +11,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { isRelevant } from "./avito-filter.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +29,8 @@ const opts = {
   git: true,
   notify: true,
   verbose: false,
+  clean: false,
+  dryRun: false,
 };
 
 for (let i = 0; i < args.length; i++) {
@@ -39,6 +42,8 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--no-git") opts.git = false;
   else if (a === "--no-notify") opts.notify = false;
   else if (a === "--verbose") opts.verbose = true;
+  else if (a === "--clean") opts.clean = true;
+  else if (a === "--dry-run") opts.dryRun = true;
   else if (a === "--help" || a === "-h") {
     console.log(`Usage: avito-watch.mjs [options]
 
@@ -48,6 +53,8 @@ for (let i = 0; i < args.length; i++) {
   --data-dir <dir>   where state and listing files live (default data/avito)
   --no-git           do not commit results
   --no-notify        do not show macOS notifications
+  --clean            remove saved listings that do not match the filter
+  --dry-run          with --clean: only show what would be removed
 `);
     process.exit(0);
   }
@@ -90,34 +97,6 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
     description,
   };
 }).filter((item) => item.id)`;
-
-// The user wants Soviet folding, hunting and military knives, plus knife
-// keychains. Kitchen/table knives, books and industrial tooling are noise.
-const RE_BLADE = /нож(?!ниц|овк|к)|клинок|кинжал|кортик|штык|тесак|палаш|сабл/i;
-const RE_KEYCHAIN = /брелок|keychain/i;
-const RE_TYPE = /складн|перочин|охотнич|военн|армейск|военохот|десант|спецназ|морск|флот|казач/i;
-const RE_SOVIET = /ссср|советск|cccp/i;
-const RE_EXCLUDE = /кухонн|мясн|повар|разделочн|столов|сервиз|вилк|ложк|мясорубк|терк|кастрюл|сковород|консервн|сечка|капуст|посуда|мельхиор|нейзильбер|хлеб|книг|роман|журнал|энциклопед|справочник|учебник|плакат|открытк|рубанок|фрез|резец|сверл|станок|шлифмотор|точило|промышлен|напильник|зубило|стамеск|долот|молоток|секатор|топор|лопат|пила|ножовк|ножниц|ножк|бритв|канцеляр|садов|грибник|строительн|монтажн|хозяйствен/i;
-
-function isRelevant(item) {
-  const title = String(item.title || "").toLowerCase();
-  const text = `${title} ${String(item.description || "").toLowerCase()}`;
-
-  const hasBlade = RE_BLADE.test(title);
-  const hasKeychainKnife = RE_KEYCHAIN.test(title) && (RE_BLADE.test(text) || RE_TYPE.test(text));
-  if (!hasBlade && !hasKeychainKnife) return false;
-
-  // Keep only items that actually mention the USSR / Soviet origin.
-  if (!RE_SOVIET.test(text)) return false;
-
-  if (RE_EXCLUDE.test(title)) return false;
-
-  // "Набор ножей" is usually a table set; keep sets that are clearly knives
-  // we want (folding/hunting/military).
-  if (/набор/.test(text) && /нож/.test(text) && !RE_TYPE.test(text)) return false;
-
-  return true;
-}
 
 const log = (...parts) => {
   console.log(`[${new Date().toISOString()}]`, ...parts);
@@ -405,6 +384,55 @@ async function runOnce(state) {
   else if (fresh.length) await commit(fresh, false);
 }
 
+function cleanListings(dryRun) {
+  const listingsDir = path.join(opts.dataDir, "listings");
+  const keptIds = new Set();
+  const removedFiles = [];
+  let kept = 0;
+  let removed = 0;
+
+  if (fs.existsSync(listingsDir)) {
+    for (const dateName of fs.readdirSync(listingsDir)) {
+      const dateDir = path.join(listingsDir, dateName);
+      if (!fs.statSync(dateDir).isDirectory()) continue;
+      for (const file of fs.readdirSync(dateDir)) {
+        if (!file.endsWith(".md")) continue;
+        const full = path.join(dateDir, file);
+        const raw = fs.readFileSync(full, "utf8");
+        const id = (raw.match(/^id:\s*"?([^"\n]+)"?/m) || [])[1] || path.basename(file, ".md");
+        const title = (raw.match(/^title:\s*"(.*)"\s*$/m) || [])[1] || "";
+        const description = (raw.split("## Описание")[1] || "").trim();
+        if (isRelevant({ title, description })) {
+          kept++;
+          keptIds.add(id);
+        } else {
+          removed++;
+          removedFiles.push(path.relative(ROOT, full));
+          if (!dryRun) fs.unlinkSync(full);
+        }
+      }
+      if (!dryRun && fs.readdirSync(dateDir).length === 0) fs.rmdirSync(dateDir);
+    }
+  }
+
+  let logRemoved = 0;
+  if (fs.existsSync(LOG_PATH)) {
+    const lines = fs.readFileSync(LOG_PATH, "utf8").split("\n");
+    const keptLines = lines.filter((line) => {
+      if (!line.trim()) return false;
+      const id = line.split("\t")[1];
+      const keep = !id || keptIds.has(id);
+      if (!keep) logRemoved++;
+      return keep;
+    });
+    if (!dryRun) {
+      fs.writeFileSync(LOG_PATH, keptLines.length ? `${keptLines.join("\n")}\n` : "");
+    }
+  }
+
+  return { kept, removed, logRemoved, removedFiles };
+}
+
 function acquireLock() {
   fs.mkdirSync(path.dirname(LOCK_PATH), { recursive: true });
   try {
@@ -436,6 +464,20 @@ function releaseLock() {
 
 async function main() {
   acquireLock();
+
+  if (opts.clean) {
+    const result = cleanListings(opts.dryRun);
+    if (opts.dryRun) {
+      for (const file of result.removedFiles) log(`would remove ${file}`);
+    }
+    log(
+      `${opts.dryRun ? "would remove" : "removed"} ${result.removed} listing(s), ` +
+        `kept ${result.kept}, log lines removed ${result.logRemoved}`,
+    );
+    releaseLock();
+    return;
+  }
+
   const state = loadState();
   log(
     `watching ${opts.url} every ${opts.interval}s, data in ${path.relative(ROOT, opts.dataDir)}`,
