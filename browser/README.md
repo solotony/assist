@@ -52,6 +52,31 @@ node browser/bridge/cli.mjs screenshot
 
 Если Avito показывает капчу — открой окно Firefox, пройди её один раз, профиль запомнит куки.
 
+## Мониторинг объявлений Avito
+
+```bash
+./scripts/avito-watch.sh start          # каждые 5 минут
+./scripts/avito-watch.sh start --interval 600
+./scripts/avito-watch.sh status
+./scripts/avito-watch.sh log
+./scripts/avito-watch.sh stop
+./scripts/avito-watch.sh once           # одна проверка вручную
+```
+
+Первый запуск сохраняет текущую выдачу как baseline и не присылает уведомления.
+Дальше каждое новое объявление:
+
+- сохраняется отдельным файлом `data/avito/listings/<дата>/<id>.md`;
+- пишется строкой в `data/avito/new.log`;
+- показывается macOS-уведомлением;
+- коммитится и пушится в git.
+
+Остальные файлы: `data/avito/state.json` (уже виденные ID), `data/avito/latest.json`
+(последняя выдача целиком). URL и интервал меняются флагами `--url` и `--interval`.
+
+Слежение идёт по первой странице выдачи, отсортированной по дате. Вкладку лучше
+не закрывать и не переключать на другой сайт: watcher сам возвращает её на нужный URL.
+
 ## Остановка
 
 Закрой Firefox или нажми Ctrl+C в терминале, где запущен `ff.sh`. Мост остановится командой:

@@ -325,6 +325,16 @@ async function exec(cmd) {
   }
 }
 
+async function execWithTimeout(cmd) {
+  const limit = Math.min(Number(cmd.timeout) || 60000, 120000) + 10000;
+  return Promise.race([
+    exec(cmd),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`command timeout: ${cmd.action}`)), limit),
+    ),
+  ]);
+}
+
 async function pollOnce() {
   if (stopped) return;
   try {
@@ -334,7 +344,7 @@ async function pollOnce() {
     const cmd = await res.json();
     let payload;
     try {
-      payload = { id: cmd.id, ok: true, data: await exec(cmd) };
+      payload = { id: cmd.id, ok: true, data: await execWithTimeout(cmd) };
     } catch (err) {
       payload = {
         id: cmd.id,

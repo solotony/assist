@@ -94,8 +94,19 @@ async function handle(req, res) {
       return res.end();
     }
     if (inflight) {
-      // The extension is still executing the previous command.
-      return json(res, 409, { error: "command in flight", id: inflight.id });
+      // Recover if the extension got stuck on a page that never responds.
+      if (Date.now() - inflight.startedAt > 120000) {
+        results.set(inflight.id, {
+          id: inflight.id,
+          ok: false,
+          error: "command timed out inside the browser",
+          finishedAt: Date.now(),
+        });
+        inflight = null;
+      } else {
+        // The extension is still executing the previous command.
+        return json(res, 409, { error: "command in flight", id: inflight.id });
+      }
     }
     const cmd = queue.shift();
     inflight = { id: cmd.id, action: cmd.action, startedAt: Date.now() };

@@ -29,6 +29,9 @@
   - Запуск: `./scripts/ff.sh` (headed, отдельный профиль `.assist/firefox-profile`).
   - Команды: `node browser/bridge/cli.mjs open|text|links|click|type|eval|screenshot|tabs`.
   - Подробности: `browser/README.md`.
+- Мониторинг Avito: `./scripts/avito-watch.sh start` (каждые 5 минут).
+  - Новые объявления: отдельные файлы `data/avito/listings/<дата>/<id>.md`.
+  - Состояние: `data/avito/state.json`, журнал: `data/avito/new.log`.
 
 ## 4. Правила работы
 
@@ -51,3 +54,4 @@
 - 2026-10-20 — создан файл, базовые правила зафиксированы.
 - 2026-10-20 — рабочая папка подключена к `git@github.com:solotony/assist.git`; всё сохраняется туда.
 - 2026-10-20 — собран мост Firefox: расширение + локальный сервер + CLI; Avito открывается и читается.
+- 2026-10-20 — запущен мониторинг Avito (5 мин), новые объявления сохраняются отдельными файлами и коммитятся.
