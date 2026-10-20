@@ -2,5 +2,7 @@ node_modules/
 .assist/
 browser/shots/
 tools/AssistNotify/build/
+data/avito/state.json
+data/avito/latest.json
 .DS_Store
 *.log
