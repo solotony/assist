@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -285,39 +285,11 @@ async function loadPage(state) {
   throw new Error("could not load listings after 3 attempts (anti-bot?)");
 }
 
-const NOTIFY_APP = path.join(
-  ROOT,
-  "tools",
-  "AssistNotify",
-  "build",
-  "AssistNotify.app",
-);
-
-function notificationStatus() {
-  const bin = path.join(NOTIFY_APP, "Contents", "MacOS", "AssistNotify");
-  if (!fs.existsSync(bin)) return "missing";
-  try {
-    const out = execFileSync(bin, ["--status"], {
-      encoding: "utf8",
-      timeout: 5000,
-    });
-    return (/status=(\w+)/.exec(out) || [])[1] || "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-function notify(title, message, url) {
+async function notify(title, message, url) {
   if (!opts.notify) return;
-
-  const status = notificationStatus();
-  if (fs.existsSync(NOTIFY_APP) && ["authorized", "provisional", "notDetermined"].includes(status)) {
-    // The Assist app owns the notification, so a click opens the URL
-    // instead of launching Script Editor.
-    execFile("open", ["-n", NOTIFY_APP, "--args", title, message, url || ""], () => {});
-    return;
-  }
-
+  // A native dialog instead of osascript's notification: clicking "Show"
+  // in Notification Center used to launch Script Editor. Here "Открыть"
+  // opens the listing in Firefox directly.
   dialogNotify(title, message, url);
 }
 
@@ -376,7 +348,7 @@ async function runOnce(state) {
     if (fresh.length) {
       appendLog(fresh);
       const first = fresh[0];
-      notify(
+      await notify(
         `Авито: ${fresh.length} новых`,
         first.title + (first.price ? ` — ${first.price}` : ""),
         first.url,
@@ -461,7 +433,7 @@ async function main() {
       // Do not pop a dialog every five minutes while Firefox is closed.
       if (Date.now() - lastErrorNotify > 60 * 60 * 1000) {
         lastErrorNotify = Date.now();
-        notify("Авито: ошибка мониторинга", err.message);
+        await notify("Авито: ошибка мониторинга", err.message);
       }
     }
     if (opts.once || stopping) break;
