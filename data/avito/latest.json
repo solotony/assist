@@ -1,8 +1,18 @@
 {
-  "checkedAt": "2026-10-20T08:26:54.259Z",
+  "checkedAt": "2026-10-20T08:32:17.965Z",
   "url": "https://www.avito.ru/all?cd=1&q=%D0%BD%D0%BE%D0%B6+%D1%81%D1%81%D1%81%D1%80&s=104",
   "count": 50,
   "items": [
+    {
+      "id": "8347426940",
+      "title": "Дорожный нож, СССР",
+      "price": "1 100 ₽",
+      "location": "Республика Коми, муниципальное образование Печора, Печора",
+      "published": "1 час назад",
+      "url": "https://www.avito.ru/pechora/kollektsionirovanie/dorozhnyy_nozh_sssr_8347426940",
+      "image": "https://30.img.avito.st/image/1/1.vK6Mj7aAEEf6KtJD-J2D4o8vEkM-OBRHPl9xQz7sFIU8LBRd-irSQzo.IeyFG5qJl3W5sv8BOvxsAICngoLx48XLk8zmvU1JuFI?cqp=2.2LhnDdKx1gU5sZ7QAbwhSdJoeYt5K_KL9JwGcCXpGrDVbBxJ1yJf9Jn7hY3rGWaiHtSha9zz1w==",
+      "description": "Туристический многопредметный (дорожный) нож, СССР,. Б/У. Состояние хорошее. Цена — 1100 рублей."
+    },
     {
       "id": "8482926807",
       "title": "Вилки и ножи Мельхиор СССР",
@@ -70,7 +80,7 @@
       "location": "Челябинская обл., Челябинск",
       "published": "1 час назад",
       "url": "https://www.avito.ru/chelyabinsk/remont_i_stroitelstvo/universalnyy_naturalnyy_gibkiy_mramor_v_rulone_8381945600",
-      "image": "https://60.img.avito.st/image/1/1.rNkfdraAADBp08I0S3SYtxzWAjStwQQwraZhNK0VBPKv1QQqadPCNKk.SulGeC0uL6YplYZU9NfPEtWTDY_ulCTB_lLZjnnUwlA",
+      "image": "",
       "description": "Только у нaссpoго ИЗ Натуpальhого Мраmоpa. Гибкий мpaмop Hаzdесоr –это прeмиaльный современный инновационный матеpиал на оснoвe натурaльногo мeлко фpакциoнногo мрaмopа закрeплённoго нa гибкoм ocновaнии с помощью акpиловыx cвязующих. Пишитe, звoнитe..."
     },
     {
@@ -208,7 +218,7 @@
       "title": "Набор столовых приборов мельхиор СССР",
       "price": "11 500 ₽",
       "location": "Москва",
-      "published": "1 час назад",
+      "published": "2 часа назад",
       "url": "https://www.avito.ru/moskva/posuda_i_tovary_dlya_kuhni/nabor_stolovyh_priborov_melhior_sssr_8413828171",
       "image": "",
       "description": "Набор десертных ножей и вилок Старое Пламя в подарочной Советской коробке. 1. Ножи десертные 18см.-6шт. 2. Вилки десертные 18. См.-6шт. Набор в отличном состоянии. Так же есть добро вилок и ножей еще на 4 персоны. Цена за набор на 6 персон в подарочн..."
@@ -492,16 +502,6 @@
       "url": "https://www.avito.ru/ivanovo/posuda_i_tovary_dlya_kuhni/nozhi_stolovye_v_upakovke_sssr_8459156876",
       "image": "",
       "description": "Раритет сама коробка, остались столовые ножи."
-    },
-    {
-      "id": "8410702355",
-      "title": "Скупка и вывоз старых вещей",
-      "price": "Цена договорная",
-      "location": "Московская обл., Красногорск· выезжает по городу",
-      "published": "",
-      "url": "https://www.avito.ru/moskovskaya_oblast_krasnogorsk/predlozheniya_uslug/skupka_i_vyvoz_staryh_veschey_8410702355",
-      "image": "",
-      "description": "Покупаю старые вещи. Деньги сразу. Список вещей, Смотрите Ниже. Если Вы хотите освободить квартиру, дом, гараж, дачу или другое помещение, от устаревших или ненужных Вам вещей. Не спешите их выбрасывать. Напишите или позвоните мне. Я уже много лет у..."
     }
   ]
 }
