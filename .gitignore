@@ -1,5 +1,6 @@
 node_modules/
 .assist/
 browser/shots/
+tools/AssistNotify/build/
 .DS_Store
 *.log

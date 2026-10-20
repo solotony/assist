@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -285,16 +285,55 @@ async function loadPage(state) {
   throw new Error("could not load listings after 3 attempts (anti-bot?)");
 }
 
-function notify(title, message) {
+const NOTIFY_APP = path.join(
+  ROOT,
+  "tools",
+  "AssistNotify",
+  "build",
+  "AssistNotify.app",
+);
+
+function notificationStatus() {
+  const bin = path.join(NOTIFY_APP, "Contents", "MacOS", "AssistNotify");
+  if (!fs.existsSync(bin)) return "missing";
+  try {
+    const out = execFileSync(bin, ["--status"], {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    return (/status=(\w+)/.exec(out) || [])[1] || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function notify(title, message, url) {
   if (!opts.notify) return;
+
+  const status = notificationStatus();
+  if (fs.existsSync(NOTIFY_APP) && ["authorized", "provisional", "notDetermined"].includes(status)) {
+    // The Assist app owns the notification, so a click opens the URL
+    // instead of launching Script Editor.
+    execFile("open", ["-n", NOTIFY_APP, "--args", title, message, url || ""], () => {});
+    return;
+  }
+
+  dialogNotify(title, message, url);
+}
+
+function dialogNotify(title, message, url) {
   const esc = (s) =>
     String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
+  const script = url
+    ? `try
+         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"Закрыть", "Открыть"} default button "Открыть" with title "Авито" giving up after 120
+         if button returned of result is "Открыть" then open location "${esc(url)}"
+       end try`
+    : `try
+         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"OK"} default button "OK" with title "Авито" giving up after 120
+       end try`;
   try {
-    execFile(
-      "osascript",
-      ["-e", `display notification "${esc(message)}" with title "${esc(title)}"`],
-      () => {},
-    );
+    execFile("osascript", ["-e", script], () => {});
   } catch {
     // notifications are best-effort
   }
@@ -340,6 +379,7 @@ async function runOnce(state) {
       notify(
         `Авито: ${fresh.length} новых`,
         first.title + (first.price ? ` — ${first.price}` : ""),
+        first.url,
       );
       log(`new listings: ${fresh.length}`);
       for (const item of fresh) {
@@ -404,6 +444,7 @@ async function main() {
   }
 
   let stopping = false;
+  let lastErrorNotify = 0;
   const stop = () => {
     stopping = true;
     releaseLock();
@@ -417,7 +458,11 @@ async function main() {
       await runOnce(state);
     } catch (err) {
       log(`check failed: ${err.message}`);
-      notify("Авито: ошибка мониторинга", err.message);
+      // Do not pop a dialog every five minutes while Firefox is closed.
+      if (Date.now() - lastErrorNotify > 60 * 60 * 1000) {
+        lastErrorNotify = Date.now();
+        notify("Авито: ошибка мониторинга", err.message);
+      }
     }
     if (opts.once || stopping) break;
     await sleep(opts.interval * 1000);
