@@ -91,6 +91,34 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
   };
 }).filter((item) => item.id)`;
 
+// The user wants Soviet folding, hunting and military knives, plus knife
+// keychains. Kitchen/table knives, books and industrial tooling are noise.
+const RE_BLADE = /нож(?!ниц|овк|к)|клинок|кинжал|кортик|штык|тесак|палаш|сабл/i;
+const RE_KEYCHAIN = /брелок|keychain/i;
+const RE_TYPE = /складн|перочин|охотнич|военн|армейск|военохот|десант|спецназ|морск|флот|казач/i;
+const RE_SOVIET = /ссср|советск|cccp/i;
+const RE_EXCLUDE = /кухонн|мясн|повар|разделочн|столов|сервиз|вилк|ложк|мясорубк|терк|кастрюл|сковород|консервн|сечка|капуст|посуда|мельхиор|нейзильбер|хлеб|книг|роман|журнал|энциклопед|справочник|учебник|плакат|открытк|рубанок|фрез|резец|сверл|станок|шлифмотор|точило|промышлен|напильник|зубило|стамеск|долот|молоток|секатор|топор|лопат|пила|ножовк|ножниц|ножк|бритв|канцеляр|садов|грибник|строительн|монтажн|хозяйствен/i;
+
+function isRelevant(item) {
+  const title = String(item.title || "").toLowerCase();
+  const text = `${title} ${String(item.description || "").toLowerCase()}`;
+
+  const hasBlade = RE_BLADE.test(title);
+  const hasKeychainKnife = RE_KEYCHAIN.test(title) && (RE_BLADE.test(text) || RE_TYPE.test(text));
+  if (!hasBlade && !hasKeychainKnife) return false;
+
+  // Keep only items that actually mention the USSR / Soviet origin.
+  if (!RE_SOVIET.test(text)) return false;
+
+  if (RE_EXCLUDE.test(title)) return false;
+
+  // "Набор ножей" is usually a table set; keep sets that are clearly knives
+  // we want (folding/hunting/military).
+  if (/набор/.test(text) && /нож/.test(text) && !RE_TYPE.test(text)) return false;
+
+  return true;
+}
+
 const log = (...parts) => {
   console.log(`[${new Date().toISOString()}]`, ...parts);
 };
@@ -329,7 +357,8 @@ async function commit(items, baseline) {
 }
 
 async function runOnce(state) {
-  const { items } = await loadPage(state);
+  const { items: allItems } = await loadPage(state);
+  const items = allItems.filter(isRelevant);
   const baseline = !state.baselineDone;
   const fresh = items.filter((item) => !state.seen[item.id]);
 
@@ -358,7 +387,7 @@ async function runOnce(state) {
         console.log(`  ${item.price}\t${item.location}\t${item.title}\n  ${item.url}`);
       }
     } else {
-      log(`no new listings (${items.length} on page)`);
+      log(`no new listings (${items.length} relevant of ${allItems.length} on page)`);
     }
   }
 
@@ -366,6 +395,7 @@ async function runOnce(state) {
     checkedAt: new Date().toISOString(),
     url: opts.url,
     count: items.length,
+    rawCount: allItems.length,
     items,
   });
   state.lastRun = new Date().toISOString();
