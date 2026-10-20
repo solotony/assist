@@ -32,6 +32,7 @@ const opts = {
   clean: false,
   dryRun: false,
   backfillImages: false,
+  localOnly: false,
 };
 
 for (let i = 0; i < args.length; i++) {
@@ -45,6 +46,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--verbose") opts.verbose = true;
   else if (a === "--clean") opts.clean = true;
   else if (a === "--backfill-images") opts.backfillImages = true;
+  else if (a === "--local-only") opts.localOnly = true;
   else if (a === "--dry-run") opts.dryRun = true;
   else if (a === "--help" || a === "-h") {
     console.log(`Usage: avito-watch.mjs [options]
@@ -57,6 +59,7 @@ for (let i = 0; i < args.length; i++) {
   --no-notify        do not show macOS notifications
   --clean            remove saved listings that do not match the filter
   --backfill-images  download photos for saved listings that have none
+  --local-only       with --backfill-images: only refresh links to existing photos
   --dry-run          with --clean: only show what would be removed
 `);
     process.exit(0);
@@ -93,6 +96,19 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
       try { image = new URL(image, location.origin).href; } catch {}
     }
   }
+  // Avito keeps the card gallery URLs in data-marker attributes. This works
+  // even for cards whose <img> has not been lazy-loaded yet.
+  const images = Array.from(
+    new Set(
+      Array.from(el.querySelectorAll('[data-marker^="slider-image/image-"]'))
+        .map((node) => node.getAttribute('data-marker').replace('slider-image/image-', ''))
+        .filter((src) => src && !src.startsWith('data:'))
+        .map((src) => {
+          try { return new URL(src, location.origin).href; } catch { return src; }
+        }),
+    ),
+  );
+  if (images.length) image = images[0];
   const paras = Array.from(el.querySelectorAll('p'))
     .map((p) => (p.innerText || '').trim())
     .filter(Boolean);
@@ -112,6 +128,7 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
     published: (dateEl && dateEl.innerText || '').trim(),
     url,
     image,
+    images,
     description,
   };
 }).filter((item) => item.id)`;
@@ -218,11 +235,18 @@ async function downloadImage(url, destBase) {
 }
 
 async function downloadImages(item) {
-  if (!item.image || item.image.startsWith("data:")) return [];
+  const urls = (item.images && item.images.length ? item.images : [item.image]).filter(
+    (url) => url && !url.startsWith("data:"),
+  );
+  if (!urls.length) return [];
   const dir = listingImageDir(item);
   fs.mkdirSync(dir, { recursive: true });
-  const name = await downloadImage(item.image, path.join(dir, "1"));
-  return name ? [name] : [];
+  const names = [];
+  for (const [index, url] of urls.entries()) {
+    const name = await downloadImage(url, path.join(dir, String(index + 1)));
+    if (name) names.push(name);
+  }
+  return names;
 }
 
 function renderPhoto(item) {
@@ -268,10 +292,16 @@ async function writeListing(item, baseline, tabId) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const firstSeen = new Date().toISOString();
 
-  if (!baseline && tabId) {
+  if (!baseline && tabId && !(item.images && item.images.length)) {
+    // Fallback for the rare card without gallery data: open the listing page.
     const remote = await fetchListingImage(item, tabId);
-    if (remote) item.image = remote;
+    if (remote) {
+      item.image = remote;
+      item.images = [remote];
+      item._visitedListing = true;
+    }
   }
+  if (!item.image && item.images && item.images.length) item.image = item.images[0];
 
   item.localImages = await downloadImages(item);
   fs.writeFileSync(file, renderListing(item, firstSeen, baseline));
@@ -464,11 +494,13 @@ async function runOnce(state) {
       state.seen[item.id] = new Date().toISOString();
     }
     if (fresh.length) {
-      // We visited listing pages to grab larger photos; return to the feed.
-      try {
-        await cli(["open", opts.url, "--tab", String(tabId), "--timeout", "60000"], 90000);
-      } catch (err) {
-        debug(`return to search failed: ${err.message}`);
+      // A card without gallery data may have sent the tab to a listing page.
+      if (fresh.some((item) => item._visitedListing)) {
+        try {
+          await cli(["open", opts.url, "--tab", String(tabId), "--timeout", "60000"], 90000);
+        } catch (err) {
+          debug(`return to search failed: ${err.message}`);
+        }
       }
       appendLog(fresh);
       const first = fresh[0];
@@ -561,35 +593,50 @@ function frontMatterField(raw, name) {
   }
 }
 
-function findLocalImage(file, id) {
+function localImageFiles(file, id) {
   const dir = path.join(path.dirname(file), id);
-  if (!fs.existsSync(dir)) return "";
-  return fs.readdirSync(dir).find((name) => /^1\.(jpe?g|png|webp|avif)$/i.test(name)) || "";
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((name) => /^\d+\.(jpe?g|png|webp|avif)$/i.test(name))
+    .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10));
 }
 
-function updateListingImage(file, id, remote, localName) {
+function findLocalImage(file, id) {
+  return localImageFiles(file, id)[0] || "";
+}
+
+function updateListingImage(file, id, remote) {
+  const names = localImageFiles(file, id);
+  if (!names.length) return false;
+
   let raw = fs.readFileSync(file, "utf8");
-  const localRel = `${id}/${localName}`;
+  const firstRel = `${id}/${names[0]}`;
 
   if (remote) raw = raw.replace(/^image:.*$/m, `image: ${q(remote)}`);
   if (/^image_local:.*$/m.test(raw)) {
-    raw = raw.replace(/^image_local:.*$/m, `image_local: ${q(localRel)}`);
+    raw = raw.replace(/^image_local:.*$/m, `image_local: ${q(firstRel)}`);
   } else {
-    raw = raw.replace(/^(image:.*)$/m, `$1\nimage_local: ${q(localRel)}`);
+    raw = raw.replace(/^(image:.*)$/m, `$1\nimage_local: ${q(firstRel)}`);
   }
 
-  if (!/^## Фото\s*$/m.test(raw)) {
-    const section = `## Фото\n\n![Фото 1](${localRel})\n\n`;
-    if (/^## Описание\s*$/m.test(raw)) {
-      raw = raw.replace(/^## Описание\s*$/m, `${section}## Описание`);
-    } else {
-      raw = `${raw.trimEnd()}\n\n${section}`;
-    }
-  } else if (!/^!\[Фото/m.test(raw)) {
-    raw = raw.replace(/^(## Фото\s*)$/m, `$1\n\n![Фото 1](${localRel})`);
+  const section = `## Фото\n\n${names
+    .map((name, index) => `![Фото ${index + 1}](${id}/${name})`)
+    .join("\n\n")}\n\n`;
+
+  const heading = raw.search(/^## Фото\s*$/m);
+  if (heading >= 0) {
+    const next = raw.indexOf("\n## ", heading + 1);
+    const end = next >= 0 ? next + 1 : raw.length;
+    raw = raw.slice(0, heading) + section + raw.slice(end);
+  } else if (/^## Описание\s*$/m.test(raw)) {
+    raw = raw.replace(/^## Описание\s*$/m, `${section}## Описание`);
+  } else {
+    raw = `${raw.trimEnd()}\n\n${section}`;
   }
 
   fs.writeFileSync(file, raw);
+  return true;
 }
 
 function findListingFiles() {
@@ -628,10 +675,11 @@ async function backfillImages() {
       const local = findLocalImage(file, id);
 
       if (local) {
-        updateListingImage(file, id, remote, local);
+        updateListingImage(file, id, remote);
         existing++;
         continue;
       }
+      if (opts.localOnly) continue;
       if (!url) {
         failed++;
         log(`image skipped for ${id}: no listing URL`);
@@ -659,7 +707,7 @@ async function backfillImages() {
         continue;
       }
 
-      updateListingImage(file, id, image, name);
+      updateListingImage(file, id, image);
       downloaded++;
       log(`image saved for ${id}: ${name}`);
     }
