@@ -1,0 +1,21 @@
+{
+  "manifest_version": 2,
+  "name": "Assist Bridge",
+  "version": "1.0.0",
+  "description": "Local bridge that lets the assistant control Firefox tabs",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "assist-bridge@solotony.local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  }
+}

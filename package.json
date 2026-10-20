@@ -1,0 +1,12 @@
+{
+  "name": "assist",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal assistant workspace: context, rules and a Firefox control bridge",
+  "scripts": {
+    "ff": "bash scripts/ff.sh",
+    "bridge": "node browser/bridge/server.mjs",
+    "cli": "node browser/bridge/cli.mjs"
+  }
+}
