@@ -31,6 +31,7 @@ const opts = {
   verbose: false,
   clean: false,
   dryRun: false,
+  backfillImages: false,
 };
 
 for (let i = 0; i < args.length; i++) {
@@ -43,6 +44,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--no-notify") opts.notify = false;
   else if (a === "--verbose") opts.verbose = true;
   else if (a === "--clean") opts.clean = true;
+  else if (a === "--backfill-images") opts.backfillImages = true;
   else if (a === "--dry-run") opts.dryRun = true;
   else if (a === "--help" || a === "-h") {
     console.log(`Usage: avito-watch.mjs [options]
@@ -54,6 +56,7 @@ for (let i = 0; i < args.length; i++) {
   --no-git           do not commit results
   --no-notify        do not show macOS notifications
   --clean            remove saved listings that do not match the filter
+  --backfill-images  download photos for saved listings that have none
   --dry-run          with --clean: only show what would be removed
 `);
     process.exit(0);
@@ -546,6 +549,133 @@ function cleanListings(dryRun) {
   return { kept, removed, logRemoved, removedFiles };
 }
 
+function frontMatterField(raw, name) {
+  const match = raw.match(new RegExp(`^${name}:\\s*(.*)$`, "m"));
+  if (!match) return "";
+  const value = match[1].trim();
+  if (!value.startsWith('"')) return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value.replace(/^"|"$/g, "");
+  }
+}
+
+function findLocalImage(file, id) {
+  const dir = path.join(path.dirname(file), id);
+  if (!fs.existsSync(dir)) return "";
+  return fs.readdirSync(dir).find((name) => /^1\.(jpe?g|png|webp|avif)$/i.test(name)) || "";
+}
+
+function updateListingImage(file, id, remote, localName) {
+  let raw = fs.readFileSync(file, "utf8");
+  const localRel = `${id}/${localName}`;
+
+  if (remote) raw = raw.replace(/^image:.*$/m, `image: ${q(remote)}`);
+  if (/^image_local:.*$/m.test(raw)) {
+    raw = raw.replace(/^image_local:.*$/m, `image_local: ${q(localRel)}`);
+  } else {
+    raw = raw.replace(/^(image:.*)$/m, `$1\nimage_local: ${q(localRel)}`);
+  }
+
+  if (!/^## Фото\s*$/m.test(raw)) {
+    const section = `## Фото\n\n![Фото 1](${localRel})\n\n`;
+    if (/^## Описание\s*$/m.test(raw)) {
+      raw = raw.replace(/^## Описание\s*$/m, `${section}## Описание`);
+    } else {
+      raw = `${raw.trimEnd()}\n\n${section}`;
+    }
+  } else if (!/^!\[Фото/m.test(raw)) {
+    raw = raw.replace(/^(## Фото\s*)$/m, `$1\n\n![Фото 1](${localRel})`);
+  }
+
+  fs.writeFileSync(file, raw);
+}
+
+function findListingFiles() {
+  const listingsDir = path.join(opts.dataDir, "listings");
+  const files = [];
+  if (!fs.existsSync(listingsDir)) return files;
+  for (const dateName of fs.readdirSync(listingsDir)) {
+    const dateDir = path.join(listingsDir, dateName);
+    if (!fs.statSync(dateDir).isDirectory()) continue;
+    for (const name of fs.readdirSync(dateDir)) {
+      if (name.endsWith(".md")) files.push(path.join(dateDir, name));
+    }
+  }
+  return files.sort();
+}
+
+async function backfillImages() {
+  const files = findListingFiles();
+  if (!files.length) {
+    log("no saved listings to backfill");
+    return;
+  }
+  if (!(await waitForBridge())) throw new Error("Firefox bridge is not running");
+
+  let tabId = null;
+  let downloaded = 0;
+  let existing = 0;
+  let failed = 0;
+
+  try {
+    for (const file of files) {
+      const raw = fs.readFileSync(file, "utf8");
+      const id = frontMatterField(raw, "id") || path.basename(file, ".md");
+      const url = frontMatterField(raw, "url");
+      const remote = frontMatterField(raw, "image");
+      const local = findLocalImage(file, id);
+
+      if (local) {
+        updateListingImage(file, id, remote, local);
+        existing++;
+        continue;
+      }
+      if (!url) {
+        failed++;
+        log(`image skipped for ${id}: no listing URL`);
+        continue;
+      }
+
+      // Opening many listing pages in a row can trigger Avito's IP check.
+      await sleep(3000);
+
+      if (!tabId) {
+        const opened = await cli(["open", url, "--timeout", "60000"], 90000);
+        tabId = opened.tabId;
+      }
+      const image = await fetchListingImage({ id, url }, tabId);
+      if (!image) {
+        failed++;
+        continue;
+      }
+
+      const dir = path.join(path.dirname(file), id);
+      fs.mkdirSync(dir, { recursive: true });
+      const name = await downloadImage(image, path.join(dir, "1"));
+      if (!name) {
+        failed++;
+        continue;
+      }
+
+      updateListingImage(file, id, image, name);
+      downloaded++;
+      log(`image saved for ${id}: ${name}`);
+    }
+  } finally {
+    if (tabId) {
+      try {
+        await cli(["close", "--tab", String(tabId)], 30000);
+      } catch {
+        // tab may already be gone
+      }
+    }
+  }
+
+  log(`images: ${downloaded} downloaded, ${existing} already present, ${failed} failed`);
+}
+
 function acquireLock() {
   fs.mkdirSync(path.dirname(LOCK_PATH), { recursive: true });
   try {
@@ -587,6 +717,12 @@ async function main() {
       `${opts.dryRun ? "would remove" : "removed"} ${result.removed} listing(s), ` +
         `kept ${result.kept}, log lines removed ${result.logRemoved}`,
     );
+    releaseLock();
+    return;
+  }
+
+  if (opts.backfillImages) {
+    await backfillImages();
     releaseLock();
     return;
   }
