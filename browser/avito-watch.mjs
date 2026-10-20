@@ -416,6 +416,7 @@ async function main() {
   }
 
   let stopping = false;
+  let bridgeDown = false;
   let lastErrorNotify = 0;
   const stop = () => {
     stopping = true;
@@ -428,12 +429,29 @@ async function main() {
   do {
     try {
       await runOnce(state);
+      if (bridgeDown) {
+        bridgeDown = false;
+        log("bridge is back; monitoring resumed");
+      }
     } catch (err) {
-      log(`check failed: ${err.message}`);
-      // Do not pop a dialog every five minutes while Firefox is closed.
-      if (Date.now() - lastErrorNotify > 60 * 60 * 1000) {
-        lastErrorNotify = Date.now();
-        await notify("Авито: ошибка мониторинга", err.message);
+      const isBridgeDown = /bridge is not running|fetch failed/i.test(err.message);
+      if (isBridgeDown) {
+        // Firefox was closed: warn and log once, then stay quiet until it is back.
+        if (!bridgeDown) {
+          bridgeDown = true;
+          log(`check failed: ${err.message}`);
+          await notify(
+            "Авито: мониторинг остановлен",
+            "Firefox закрыт или мост недоступен. Запусти ./scripts/ff.sh",
+          );
+        }
+      } else {
+        log(`check failed: ${err.message}`);
+        if (Date.now() - lastErrorNotify > 60 * 60 * 1000) {
+          // Other errors are rare; keep them at most once an hour.
+          lastErrorNotify = Date.now();
+          await notify("Авито: ошибка мониторинга", err.message);
+        }
       }
     }
     if (opts.once || stopping) break;
