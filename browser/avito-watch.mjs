@@ -73,6 +73,23 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
   const dateEl = el.querySelector('[data-marker="item-date"]');
   const linkEl = el.querySelector('a[data-marker="item-title"]') || el.querySelector('a[href]');
   const imgEl = el.querySelector('img[itemprop="image"]') || el.querySelector('img');
+  let image = '';
+  if (imgEl) {
+    image = imgEl.currentSrc || imgEl.src || imgEl.getAttribute('data-src') || '';
+    if (!image) {
+      const srcset = imgEl.getAttribute('srcset') || '';
+      const candidates = srcset.split(',').map((s) => s.trim().split(/\\s+/)[0]).filter(Boolean);
+      if (candidates.length) image = candidates[candidates.length - 1];
+    }
+    if (!image) {
+      const bg = getComputedStyle(imgEl).backgroundImage || '';
+      const m = bg.match(/url\\(["']?(.*?)["']?\\)/);
+      if (m) image = m[1];
+    }
+    if (image) {
+      try { image = new URL(image, location.origin).href; } catch {}
+    }
+  }
   const paras = Array.from(el.querySelectorAll('p'))
     .map((p) => (p.innerText || '').trim())
     .filter(Boolean);
@@ -91,12 +108,31 @@ const EXTRACT_CODE = `Array.from(document.querySelectorAll('[data-marker="item"]
     location: (locEl && locEl.innerText || '').trim(),
     published: (dateEl && dateEl.innerText || '').trim(),
     url,
-    image: imgEl
-      ? (imgEl.currentSrc || imgEl.src || imgEl.getAttribute('data-src') || '')
-      : '',
+    image,
     description,
   };
 }).filter((item) => item.id)`;
+
+const LISTING_IMAGE_CODE = `(() => {
+  const imgs = Array.from(document.querySelectorAll('img')).filter((i) => {
+    const w = i.naturalWidth || 0;
+    const h = i.naturalHeight || 0;
+    return w >= 300 && h >= 200 && !/logo|avatar|seller/i.test(String(i.className));
+  });
+  const withAlt = imgs.find((i) => (i.alt || '').trim());
+  const img = withAlt || imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight))[0];
+  if (!img) return '';
+  let src = img.currentSrc || img.src || '';
+  if (!src) {
+    const srcset = img.getAttribute('srcset') || '';
+    const candidates = srcset.split(',').map((s) => s.trim().split(/\\s+/)[0]).filter(Boolean);
+    if (candidates.length) src = candidates[candidates.length - 1];
+  }
+  if (src) {
+    try { src = new URL(src, location.origin).href; } catch {}
+  }
+  return src;
+})()`;
 
 const log = (...parts) => {
   console.log(`[${new Date().toISOString()}]`, ...parts);
@@ -137,7 +173,67 @@ function listingPath(item) {
   return path.join(opts.dataDir, "listings", slugDate(), `${item.id}.md`);
 }
 
+function listingImageDir(item) {
+  return path.join(path.dirname(listingPath(item)), item.id);
+}
+
+async function fetchListingImage(item, tabId) {
+  if (!item.url || !tabId) return "";
+  try {
+    await cli(["open", item.url, "--tab", String(tabId), "--timeout", "60000"], 90000);
+    await cli(["wait", "img", "--tab", String(tabId), "--timeout", "30000"], 60000);
+    await sleep(1000);
+    const image = await cli(["eval", LISTING_IMAGE_CODE, "--tab", String(tabId)], 60000);
+    return typeof image === "string" ? image : "";
+  } catch (err) {
+    log(`listing image failed for ${item.id}: ${err.message}`);
+    return "";
+  }
+}
+
+async function downloadImage(url, destBase) {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+        Referer: "https://www.avito.ru/",
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const type = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    if (!type.startsWith("image/")) throw new Error(`not an image: ${type || "unknown"}`);
+    const ext =
+      type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/avif" ? "avif" : "jpg";
+    const file = `${destBase}.${ext}`;
+    fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    return path.basename(file);
+  } catch (err) {
+    log(`image download failed: ${err.message}`);
+    return null;
+  }
+}
+
+async function downloadImages(item) {
+  if (!item.image || item.image.startsWith("data:")) return [];
+  const dir = listingImageDir(item);
+  fs.mkdirSync(dir, { recursive: true });
+  const name = await downloadImage(item.image, path.join(dir, "1"));
+  return name ? [name] : [];
+}
+
+function renderPhoto(item) {
+  if (item.localImages && item.localImages.length) {
+    return `## Фото\n\n${item.localImages
+      .map((name, index) => `![Фото ${index + 1}](${item.id}/${name})`)
+      .join("\n\n")}\n`;
+  }
+  if (item.image) return `## Фото\n\n![Фото](${item.image})\n`;
+  return "";
+}
+
 function renderListing(item, firstSeen, baseline) {
+  const photo = renderPhoto(item);
   return `---
 id: ${q(item.id)}
 title: ${q(item.title)}
@@ -146,6 +242,7 @@ location: ${q(item.location)}
 published: ${q(item.published)}
 url: ${q(item.url)}
 image: ${q(item.image)}
+image_local: ${q(item.localImages && item.localImages[0] ? `${item.id}/${item.localImages[0]}` : "")}
 first_seen: ${q(firstSeen)}
 baseline: ${baseline ? "true" : "false"}
 ---
@@ -157,16 +254,23 @@ baseline: ${baseline ? "true" : "false"}
 - **Опубликовано:** ${item.published || "—"}
 - **Ссылка:** ${item.url || "—"}
 
-## Описание
+${photo ? `${photo}\n` : ""}## Описание
 
 ${item.description || "_Описание не показано в выдаче._"}
 `;
 }
 
-function writeListing(item, baseline) {
+async function writeListing(item, baseline, tabId) {
   const file = listingPath(item);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const firstSeen = new Date().toISOString();
+
+  if (!baseline && tabId) {
+    const remote = await fetchListingImage(item, tabId);
+    if (remote) item.image = remote;
+  }
+
+  item.localImages = await downloadImages(item);
   fs.writeFileSync(file, renderListing(item, firstSeen, baseline));
   return file;
 }
@@ -269,6 +373,9 @@ async function loadPage(state) {
       continue;
     }
 
+    // Give lazy-loaded card images a moment to get their URLs.
+    await sleep(1000);
+
     const page = await cli(
       ["eval", "({title: document.title, count: document.querySelectorAll('[data-marker=\"item\"]').length})", "--tab", String(tabId)],
       60000,
@@ -336,24 +443,30 @@ async function commit(items, baseline) {
 }
 
 async function runOnce(state) {
-  const { items: allItems } = await loadPage(state);
+  const { items: allItems, tabId } = await loadPage(state);
   const items = allItems.filter(isRelevant);
   const baseline = !state.baselineDone;
   const fresh = items.filter((item) => !state.seen[item.id]);
 
   if (baseline) {
     for (const item of items) {
-      writeListing(item, true);
+      await writeListing(item, true);
       state.seen[item.id] = new Date().toISOString();
     }
     state.baselineDone = true;
     log(`baseline: ${items.length} listings saved`);
   } else {
     for (const item of fresh) {
-      writeListing(item, false);
+      await writeListing(item, false, tabId);
       state.seen[item.id] = new Date().toISOString();
     }
     if (fresh.length) {
+      // We visited listing pages to grab larger photos; return to the feed.
+      try {
+        await cli(["open", opts.url, "--tab", String(tabId), "--timeout", "60000"], 90000);
+      } catch (err) {
+        debug(`return to search failed: ${err.message}`);
+      }
       appendLog(fresh);
       const first = fresh[0];
       await notify(
