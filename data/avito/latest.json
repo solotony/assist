@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-10-20T08:16:19.959Z",
+  "checkedAt": "2026-10-20T08:17:54.855Z",
   "url": "https://www.avito.ru/all?cd=1&q=%D0%BD%D0%BE%D0%B6+%D1%81%D1%81%D1%81%D1%80&s=104",
-  "count": 50,
+  "count": 49,
   "items": [
     {
       "id": "8346970663",
@@ -32,16 +32,6 @@
       "url": "https://www.avito.ru/moskva/posuda_i_tovary_dlya_kuhni/nozhi_sssr_na_dobor_8438305333",
       "image": "https://60.img.avito.st/image/1/1.Ob2yBLaAlVSkpDdVzHQ-87Gkl1AAs5FUANT0UAAHlPYHp5FOpKQ3VQQ.e4pAmfGZMt30TPUHTrkYq59p-MYm9C7dIWBuTwQPn74",
       "description": "Ножи времен СССР на добор. 150 руб 1 шт."
-    },
-    {
-      "id": "8431727152",
-      "title": "Вилки десертные СССР",
-      "price": "110 ₽",
-      "location": "Москва",
-      "published": "1 час назад",
-      "url": "https://www.avito.ru/moskva/posuda_i_tovary_dlya_kuhni/vilki_desertnye_sssr_8431727152",
-      "image": "https://b20.img.avito.st/image/1/1.Brns6baAqlD6SQhR7JUzuOxIqFReXq5QXjnLVF7qq_JZSq5K-kkIUVo.VHdyar4GkKT_IC2xz32HKY1SVuDP38Cyng7ZHRAXI0g?cqp=2.2LhnDdKx1gU5sZ7QAbwhSdJoeYt5K_KL9JwGcCXpGrDVbBxJ1yJf9Jn7hY3rGWaiHtSha9zz1w==",
-      "description": "Десертные (предположительно, т. К имеют короткие зубчики)вилки и нож. 110 руб одна штука."
     },
     {
       "id": "8381945600",
@@ -80,7 +70,7 @@
       "location": "Москва",
       "published": "1 час назад",
       "url": "https://www.avito.ru/moskva/ohota_i_rybalka/perachinnye_nozhiki_sssr_8419921894",
-      "image": "",
+      "image": "https://b40.img.avito.st/image/1/1.LjNDKbaAgtpViSDbEykOOhiIgN7xnoba8fnj3vEqg3j2iobAVYkg2_U.4lSPMp8KEA_2tuXLSFJQ_682_DMuKv2Lbm5AufNF3Sc",
       "description": "Перачинные ножики ссср, состояние на фото, цена указана за все, отдельно не продаётся, авито доставки нет."
     },
     {
@@ -152,6 +142,16 @@
       "url": "https://www.avito.ru/kommunarka/posuda_i_tovary_dlya_kuhni/nabor_vilok_plamya6_sht_melhior_sssr_70-80_gg_8410146230",
       "image": "",
       "description": "Набор столовых вилок, Пламя, 6 штук в футляре, мельхиор 20,5 см. Кольчугино, СССР 1970-1980 гг. Вилки десертные винтажные в бархатной родной коробке. Нужно лишь почтить вилки, так состояние отличное, острые). На маркетплейсах цена от 11 тысяч. Дост..."
+    },
+    {
+      "id": "8545047231",
+      "title": "Ножи СССР мельхиор, посеребрение зиш",
+      "price": "1 500 ₽",
+      "location": "Воронежская обл., Воронеж",
+      "published": "1 час назад",
+      "url": "https://www.avito.ru/voronezh/ohota_i_rybalka/nozhi_sssr_melhior_poserebrenie_zish_8545047231",
+      "image": "",
+      "description": "Ножи СССР с ручкой из посеребренного мельхиора и лезвием из нержавеющей стали. Завод им. Шевченко. Длина 26 см Серия«Классик». Состояние на фото. Продаю только набором 1500рублей. Отправлю любой Авито доставкой. Кроме почта России."
     },
     {
       "id": "8471695915",
@@ -492,16 +492,6 @@
       "url": "https://www.avito.ru/moskva/posuda_i_tovary_dlya_kuhni/nabor_stolovyh_priborov_sssr_nerzhaveyka_8347679720",
       "image": "https://b40.img.avito.st/image/1/1.528uF7aAS4Y4t-mHbCjibyy3SYKcoE-GnMcqgpwUSiSbtE-cOLfph5g.LUSi9NC9EIqemj17imcPdTmWbFdI-lJvt3V6oKP6Goo",
       "description": "Набор столовых приборов СССР нержавейка. Новый. Вилки и ножи вскрыты (уже не помню почему). Остальные приборы запечатаны. Отсутствует один нож (итого в коробке 48 предметов). — Ложка столовая. — Ложка чайная. — Нож столовый. — Вилка столовая. — Пол..."
-    },
-    {
-      "id": "8409930048",
-      "title": "Складные ножики СССР",
-      "price": "1 000 ₽",
-      "location": "Республика Татарстан, Казань",
-      "published": "Вчера",
-      "url": "https://www.avito.ru/kazan/ohota_i_rybalka/skladnye_nozhiki_sssr_8409930048",
-      "image": "",
-      "description": "Ножики СССР, состояние на фото. На сером, только лезвие и вилка, открывашка отломлена. Цена за все 3 штуки."
     }
   ]
 }
