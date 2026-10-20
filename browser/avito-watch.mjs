@@ -556,7 +556,11 @@ function cleanListings(dryRun) {
         } else {
           removed++;
           removedFiles.push(path.relative(ROOT, full));
-          if (!dryRun) fs.unlinkSync(full);
+          if (!dryRun) {
+            fs.unlinkSync(full);
+            const imageDir = path.join(dateDir, id);
+            if (fs.existsSync(imageDir)) fs.rmSync(imageDir, { recursive: true, force: true });
+          }
         }
       }
       if (!dryRun && fs.readdirSync(dateDir).length === 0) fs.rmdirSync(dateDir);
