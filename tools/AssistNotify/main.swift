@@ -31,7 +31,10 @@ final class AppDelegate: NSObject, UNUserNotificationCenterDelegate {
         if let raw = response.notification.request.content.userInfo["url"] as? String,
            !raw.isEmpty,
            let target = URL(string: raw) {
-            NSWorkspace.shared.open(target)
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            task.arguments = ["-a", "Firefox", target.absoluteString]
+            try? task.run()
         }
         completionHandler()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

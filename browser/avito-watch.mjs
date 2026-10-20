@@ -264,7 +264,7 @@ async function loadPage(state) {
 
     const page = await cli(
       ["eval", "({title: document.title, count: document.querySelectorAll('[data-marker=\"item\"]').length})", "--tab", String(tabId)],
-      30000,
+      60000,
     );
     if (isChallenge([], page.title) && page.count === 0) {
       log(`anti-bot check (attempt ${attempt}), waiting...`);
@@ -274,7 +274,7 @@ async function loadPage(state) {
 
     const items = await cli(
       ["eval", EXTRACT_CODE, "--tab", String(tabId)],
-      60000,
+      90000,
     );
 
     if (Array.isArray(items) && items.length > 0) return { items, tabId };
@@ -326,11 +326,11 @@ function dialogNotify(title, message, url) {
     String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
   const script = url
     ? `try
-         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"Закрыть", "Открыть"} default button "Открыть" with title "Авито" giving up after 120
-         if button returned of result is "Открыть" then open location "${esc(url)}"
+         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"Закрыть", "Открыть"} default button "Открыть" with title "Авито" with icon note giving up after 120
+         if button returned of result is "Открыть" then do shell script "open -a Firefox " & quoted form of "${esc(url)}"
        end try`
     : `try
-         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"OK"} default button "OK" with title "Авито" giving up after 120
+         display dialog "${esc(title)}\\n\\n${esc(message)}" buttons {"OK"} default button "OK" with title "Авито" with icon caution giving up after 120
        end try`;
   try {
     execFile("osascript", ["-e", script], () => {});
